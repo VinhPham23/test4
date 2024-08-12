@@ -15,7 +15,12 @@
 <body>
     
     <script src="https://code.highcharts.com/stock/highstock.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/export-data.js"></script>
     <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+    
+
     <div id="container"></div>
     <button id="large">Large</button>
     <button id="small">Small</button>
@@ -36,83 +41,195 @@
         });
         eraWidget.ready();
 
-        // Create the initial data
-        const data = (function () {
-            const data = [];
-            const time = new Date().getTime();
+        
+        // On chart load, start an interval that adds points to the chart and animate
+// the pulsating marker.
+const onChartLoad = function () {
+    const chart = this,
+        series = chart.series[0];
 
-            for (let i = -19; i <= 0; i += 1) {
-                data.push({
-                    x: time + i * 1000,
-                    y: DS18B20
-                });
-            }
-            return data;
-        }());
-        (async () => {
+    setInterval(function () {
+        const x = (new Date()).getTime(), // current time
+            y = DS18B20;
 
+        series.addPoint([x, y], true, true);
+    }, 1000);
+};
 
-const chart = Highcharts.stockChart('container', {
-chart: {
-    height: 400
-},
+// Create the initial data
+const data = (function () {
+    const data = [];
+    const time = new Date().getTime();
 
-title: {
-    text: 'Highcharts Stock Responsive Chart'
-},
-
-subtitle: {
-    text: 'Click small/large buttons or change window size to test ' +
-        'responsiveness'
-},
-
-rangeSelector: {
-    selected: 1
-},
-
-series: [{
-    name: 'Sensor Value',
-    data: data,
-    type: 'area',
-    threshold: null,
-    tooltip: {
-        valueDecimals: 2
+    for (let i = -19; i <= 0; i += 1) {
+        data.push({
+            x: time + i * 1000,
+            y: DS18B20
+        });
     }
-}],
+    return data;
+}());
 
-responsive: {
-    rules: [{
-        condition: {
-            maxWidth: 500
-        },
-        chartOptions: {
-            chart: {
-                height: 300
-            },
-            subtitle: {
-                text: null
-            },
-            navigator: {
-                enabled: false
+// Plugin to add a pulsating marker on add point
+Highcharts.addEvent(Highcharts.Series, 'addPoint', e => {
+    const point = e.point,
+        series = e.target;
+
+    if (!series.pulse) {
+        series.pulse = series.chart.renderer.circle()
+            .add(series.markerGroup);
+    }
+
+    setTimeout(() => {
+        series.pulse
+            .attr({
+                x: series.xAxis.toPixels(point.x, true),
+                y: series.yAxis.toPixels(point.y, true),
+                r: series.options.marker.radius,
+                opacity: 1,
+                fill: series.color
+            })
+            .animate({
+                r: 20,
+                opacity: 0
+            }, {
+                duration: 1000
+            });
+    }, 1);
+});
+
+
+Highcharts.chart('container', {
+    chart: {
+        type: 'spline',
+        events: {
+            load: onChartLoad
+        }
+    },
+
+    time: {
+        useUTC: false
+    },
+
+    title: {
+        text: 'Live random data'
+    },
+
+    accessibility: {
+        announceNewData: {
+            enabled: true,
+            minAnnounceInterval: 15000,
+            announcementFormatter: function (allSeries, newSeries, newPoint) {
+                if (newPoint) {
+                    return 'New point added. Value: ' + newPoint.y;
+                }
+                return false;
             }
         }
-    }]
-}
+    },
+
+    xAxis: {
+        type: 'datetime',
+        tickPixelInterval: 150,
+        maxPadding: 0.1
+    },
+
+    yAxis: {
+        title: {
+            text: 'Value'
+        },
+        plotLines: [
+            {
+                value: 0,
+                width: 1,
+                color: '#808080'
+            }
+        ]
+    },
+
+    tooltip: {
+        headerFormat: '<b>{series.name}</b><br/>',
+        pointFormat: '{point.x:%Y-%m-%d %H:%M:%S}<br/>{point.y:.2f}'
+    },
+
+    legend: {
+        enabled: false
+    },
+
+    exporting: {
+        enabled: false
+    },
+
+    series: [
+        {
+            name: 'Random data',
+            lineWidth: 2,
+            color: Highcharts.getOptions().colors[2],
+            data
+        }
+    ]
 });
 
-document.getElementById('small').addEventListener('click', () => {
-chart.setSize(400);
-});
+const chart = Highcharts.stockChart('container', {
+        chart: {
+            height: 400
+        },
 
-document.getElementById('large').addEventListener('click', () => {
-chart.setSize(800);
-});
+        title: {
+            text: 'Highcharts Stock Responsive Chart'
+        },
 
-document.getElementById('auto').addEventListener('click', () => {
-chart.setSize(null);
-});
-})();
+        subtitle: {
+            text: 'Click small/large buttons or change window size to test ' +
+                'responsiveness'
+        },
 
+        rangeSelector: {
+            selected: 1
+        },
+
+        series: [{
+            name: 'AAPL Stock Price',
+            data: data,
+            type: 'area',
+            threshold: null,
+            tooltip: {
+                valueDecimals: 2
+            }
+        }],
+
+        responsive: {
+            rules: [{
+                condition: {
+                    maxWidth: 500
+                },
+                chartOptions: {
+                    chart: {
+                        height: 300
+                    },
+                    subtitle: {
+                        text: null
+                    },
+                    navigator: {
+                        enabled: false
+                    }
+                }
+            }]
+        }
+    });
+
+    document.getElementById('small').addEventListener('click', () => {
+        chart.setSize(400);
+    });
+
+    document.getElementById('large').addEventListener('click', () => {
+        chart.setSize(800);
+    });
+
+    document.getElementById('auto').addEventListener('click', () => {
+        chart.setSize(null);
+    });
+        
     </script>
 </body>
 </html>
