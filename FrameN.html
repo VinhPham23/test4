@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Data Chart</title>
+    <style>
+        #container {
+            min-width: 310px;
+            max-width: 800px;   
+        }
+    </style>
+</head>
+
+<body>
+    
+    <script src="https://code.highcharts.com/stock/highstock.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+    <div id="container"></div>
+    <button id="large">Large</button>
+    <button id="small">Small</button>
+    <button id="auto">Auto</button>
+    <script src="https://www.unpkg.com/@eohjsc/era-widget@1.0.14/src/index.js"></script>
+    <input type="checkbox" id="DS18B20">
+    <script>
+        const eraWidget = new EraWidget();
+        let config = null;
+        let DS18B20 = 0;
+        eraWidget.onConfiguration((configuration) => {
+        config = configuration.realtime_configs[0];
+        })
+        eraWidget.onValues((values) => {
+        const input = document.getElementById('DS18B20');
+        DS18B20 = values[config.id].value;
+        input.checked = values[config.id].value > 0;
+        });
+        eraWidget.ready();
+
+        // Create the initial data
+        const data = (function () {
+            const data = [];
+            const time = new Date().getTime();
+
+            for (let i = -19; i <= 0; i += 1) {
+                data.push({
+                    x: time + i * 1000,
+                    y: DS18B20
+                });
+            }
+            return data;
+        }());
+        (async () => {
+
+
+const chart = Highcharts.stockChart('container', {
+chart: {
+    height: 400
+},
+
+title: {
+    text: 'Highcharts Stock Responsive Chart'
+},
+
+subtitle: {
+    text: 'Click small/large buttons or change window size to test ' +
+        'responsiveness'
+},
+
+rangeSelector: {
+    selected: 1
+},
+
+series: [{
+    name: 'Sensor Value',
+    data: data,
+    type: 'area',
+    threshold: null,
+    tooltip: {
+        valueDecimals: 2
+    }
+}],
+
+responsive: {
+    rules: [{
+        condition: {
+            maxWidth: 500
+        },
+        chartOptions: {
+            chart: {
+                height: 300
+            },
+            subtitle: {
+                text: null
+            },
+            navigator: {
+                enabled: false
+            }
+        }
+    }]
+}
+});
+
+document.getElementById('small').addEventListener('click', () => {
+chart.setSize(400);
+});
+
+document.getElementById('large').addEventListener('click', () => {
+chart.setSize(800);
+});
+
+document.getElementById('auto').addEventListener('click', () => {
+chart.setSize(null);
+});
+})();
+
+    </script>
+</body>
+</html>
